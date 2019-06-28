@@ -4,7 +4,7 @@ import math
 import datetime
 import random
 import time
-import json
+import json,os
 
 import requests
 
@@ -31,12 +31,23 @@ class BaiduIndex:
     province_code = PROVINCE_CODE
     city_code = CITY_CODE
     _all_kind = ['all', 'pc', 'wise']
-    _params_queue = queue.Queue()
+    COOKIES_PATH='/home/tao/文档/my_project/spider-BaiduIndex/new_spider_without_selenium/cookis.txt'
 
-    def __init__(self, keywords: list, start_date: str, end_date: str, area=0):
+    def __init__(self, keywords: list, start_date: str, end_date: str,idx=None,area=0,cookie_path=COOKIES_PATH):
         self.keywords = keywords
         self._area = area
+        self._params_queue = queue.Queue()
         self._init_queue(start_date, end_date, keywords)
+        
+        self.cookies_list=[]
+        with open(cookie_path,'r') as f:
+            for line in f:
+                self.cookies_list.append(line.strip())
+        if idx is None:
+            cookies=random.sample(self.cookies_list,1)
+            headers['Cookie'] = cookies[0]
+        else:
+            headers['Cookie'] = self.cookies_list[idx]
 
     def get_index(self):
         """
@@ -74,22 +85,14 @@ class BaiduIndex:
         """
             初始化参数队列
         """
-        keywords_list = self._split_keywords(keywords)
         time_range_list = self._get_time_range_list(start_date, end_date)
         for start_date, end_date in time_range_list:
-            for keywords in keywords_list:
-                params = {
-                    'keywords': keywords,
-                    'start_date': start_date,
-                    'end_date': end_date
-                }
-                self._params_queue.put(params)
-
-    def _split_keywords(self, keywords: list) -> [list]:
-        """
-        一个请求最多传入5个关键词, 所以需要对关键词进行切分
-        """
-        return [keywords[i*5: (i+1)*5] for i in range(math.ceil(len(keywords)/5))]
+            params = {
+                'keywords': keywords,
+                'start_date': start_date,
+                'end_date': end_date
+            }
+            self._params_queue.put(params)
 
     def _get_encrypt_datas(self, start_date, end_date, keywords):
         """
@@ -106,7 +109,10 @@ class BaiduIndex:
         url = 'http://index.baidu.com/api/SearchApi/index?' + urlencode(request_args)
         html = self._http_get(url)
         datas = json.loads(html)
-        uniqid = datas['data']['uniqid']
+        try:
+            uniqid = datas['data']['uniqid']
+        except:
+            print(headers['Cookie'])
         encrypt_datas = []
         for single_data in datas['data']['userIndexes']:
             encrypt_datas.append(single_data)
@@ -142,13 +148,13 @@ class BaiduIndex:
                 yield formated_data
             cur_date += datetime.timedelta(days=1)
 
-    def _http_get(self, url, cookies=COOKIES):
+    def _http_get(self, url):
         """
             发送get请求, 程序中所有的get都是调这个方法
             如果想使用多cookies抓取, 和请求重试功能
             在这自己添加
         """
-        headers['Cookie'] = cookies
+        
         response = requests.get(url, headers=headers, timeout=5)
         if response.status_code != 200:
             raise requests.Timeout

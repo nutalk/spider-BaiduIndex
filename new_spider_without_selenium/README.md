@@ -12,14 +12,14 @@ from get_index import BaiduIndex
 
 if __name__ == "__main__":
     """
-    可以传入很多关键词
+    可以传入单个关键词
     """
     # 查看城市和省份的对应代码
     print(BaiduIndex.city_code)
     print(BaiduIndex.province_code)
     
     # main
-    keywords = ['爬虫', 'lol', '张艺兴', '人工智能', '华为', '武林外传']
+    keywords = ['爬虫']
     baidu_index = BaiduIndex(keywords, '2018-01-01', '2019-05-02')
     for index in baidu_index.get_index():
         print(index)
@@ -38,7 +38,11 @@ if __name__ == "__main__":
 
 ### update 
 2018/02/10 更新格式化数据的方法format_data  
+
 2018/12/29 更新查询指定区域百度指数的功能  
+
 2018/11/07 更新
+
 2019/05/31 更新
 
+2019/06/28 增加多cookie查询
