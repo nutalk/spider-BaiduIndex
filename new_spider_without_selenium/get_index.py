@@ -9,7 +9,8 @@ import json,os
 import requests
 
 from config import COOKIES, PROVINCE_CODE, CITY_CODE
-
+from utils import NotLoginError,BadRequestError
+from retry import retry
 
 headers = {
     'Host': 'index.baidu.com',
@@ -31,14 +32,16 @@ class BaiduIndex:
     province_code = PROVINCE_CODE
     city_code = CITY_CODE
     _all_kind = ['all', 'pc', 'wise']
-    COOKIES_PATH='/home/tao/文档/my_project/spider-BaiduIndex/new_spider_without_selenium/cookis.txt'
+    
 
-    def __init__(self, keywords: list, start_date: str, end_date: str,idx=None,area=0,cookie_path=COOKIES_PATH):
+    def __init__(self, keywords: list, start_date: str, end_date: str,idx=None,area=0,cookie_path=None):
+        COOKIES_PATH='/home/tao/文档/my_project/spider-BaiduIndex/new_spider_without_selenium/cookis.txt'
         self.keywords = keywords
         self._area = area
         self._params_queue = queue.Queue()
         self._init_queue(start_date, end_date, keywords)
-        
+        if cookie_path is None:
+            cookie_path=COOKIES_PATH
         self.cookies_list=[]
         with open(cookie_path,'r') as f:
             for line in f:
@@ -109,10 +112,12 @@ class BaiduIndex:
         url = 'http://index.baidu.com/api/SearchApi/index?' + urlencode(request_args)
         html = self._http_get(url)
         datas = json.loads(html)
-        try:
-            uniqid = datas['data']['uniqid']
-        except:
-            print(headers['Cookie'])
+        if 'bad request' in html:
+            time.sleep(random.randint(2,5))
+            raise BadRequestError(keywords[0])
+        if 'not login' in html:
+            raise NotLoginError(headers['Cookie'])
+        uniqid = datas['data']['uniqid']
         encrypt_datas = []
         for single_data in datas['data']['userIndexes']:
             encrypt_datas.append(single_data)
@@ -196,3 +201,24 @@ class BaiduIndex:
         """
         sleep_time = random.choice(range(50, 90)) * 0.1
         time.sleep(sleep_time)
+
+@retry(NotLoginError,tries=5,delay=5)
+def get_keyword_index(word,start_date,end_date,idx=None,area=0,cookie_path=None):
+    """获取百度指数
+    
+    Arguments:
+        word {str} -- 关键词
+        start_date {str} -- '2019-01-01'
+        end_date {str} -- '2019-01-01'
+        area {int} -- 0
+        cookie_path {str} -- cookie path
+    
+    Returns:
+        list -- list contain all datas
+    """
+    print('trying:',word)
+    baidu_index = BaiduIndex([word],start_date,end_date,idx=idx,area=area,cookie_path=cookie_path)
+    result=[]
+    for item in baidu_index.get_index():
+        result.append(item)
+    return result
