@@ -8,7 +8,7 @@ import json,os
 
 import requests
 
-from config import COOKIES, PROVINCE_CODE, CITY_CODE
+from config import PROVINCE_CODE, CITY_CODE
 from utils import NotLoginError,BadRequestError
 from retry import retry
 
@@ -35,7 +35,7 @@ class BaiduIndex:
     
 
     def __init__(self, keywords: list, start_date: str, end_date: str,idx=None,area=0,cookie_path=None):
-        COOKIES_PATH='/home/tao/文档/my_project/spider-BaiduIndex/new_spider_without_selenium/cookis.txt'
+        COOKIES_PATH='/home/tao/文档/my_project/spider-BaiduIndex/new_spider_without_selenium/cookies_100.txt'
         self.keywords = keywords
         self._area = area
         self._params_queue = queue.Queue()
@@ -45,7 +45,8 @@ class BaiduIndex:
         self.cookies_list=[]
         with open(cookie_path,'r') as f:
             for line in f:
-                self.cookies_list.append(line.strip())
+                line=line.strip()
+                self.cookies_list.append(line)
         if idx is None:
             cookies=random.sample(self.cookies_list,1)
             headers['Cookie'] = cookies[0]
@@ -202,7 +203,7 @@ class BaiduIndex:
         sleep_time = random.choice(range(50, 90)) * 0.1
         time.sleep(sleep_time)
 
-@retry(NotLoginError,tries=5,delay=5)
+@retry(NotLoginError,tries=5,delay=3)
 def get_keyword_index(word,start_date,end_date,idx=None,area=0,cookie_path=None):
     """获取百度指数
     
